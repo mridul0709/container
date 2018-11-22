@@ -1,10 +1,36 @@
-version: '3'
+version: '2'
 services:
   db:
-    image: postgres
+    container_name: 'db'
+    build: './db'
+    image: db
+    ports:
+      - "5430:5432"
     volumes:
-      - /root/db_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: stockerize_prod
+      - ./db_data:/var/lib/postgresql/data
+  web:
+    container_name: 'web'
+    build: './web'
+    image: web
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    dns: localhost
+    dns_search: service.consul
+  consul:
+    container_name: consul
+    command: "-node myconsul -bootstrap -data-dir=/consul/data/"
+    image: gliderlabs/consul-server
+    volumes:
+     - ./consul/config:/consul/config
+     - ./consul/data:/consul/data
+    ports:
+     - "53:9600/udp"
+     - "8088:8500"
+  registrator:
+    command: "-internal consul://consul:8500"
+    image: gliderlabs/registrator:latest
+    container_name: 'registrator'
+    volumes:
+     - "/var/run/docker.sock:/tmp/docker.sock"
